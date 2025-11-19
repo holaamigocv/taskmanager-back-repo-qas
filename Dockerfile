@@ -10,12 +10,13 @@ RUN dotnet build "./taskmanager-back-repo-qas.csproj" -c Debug -o /out
 FROM build AS publish
 RUN dotnet publish taskmanager-back-repo-qas.csproj -c Debug -o /out
 
-# Building final image used in running container
-FROM base AS final
-RUN apk update \
-    && apk add unzip procps
-WORKDIR /src
-COPY --from=publish /out .
+COPY . ./
+RUN dotnet publish -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+
+COPY --from=build /app/publish .
 
 # Cloud Run uses port 8080
 ENV ASPNETCORE_URLS=http://+:8080
