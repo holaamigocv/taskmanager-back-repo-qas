@@ -3,23 +3,19 @@
 # ==============================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+COPY . .
+RUN dotnet restore dotnet-cloud-run-taskmanager-back-repo-qas.csproj
+RUN dotnet build "./dotnet-cloud-run-taskmanager-back-repo-qas.csproj" -c Debug -o /out
 
-# Copy csproj and restore dependencies
-COPY *.csproj ./
-RUN dotnet restore
+FROM build AS publish
+RUN dotnet publish dotnet-cloud-run-taskmanager-back-repo-qas.csproj -c Debug -o /out
 
-# Copy full source code and publish
-COPY . ./
-RUN dotnet publish -c Release -o /app/publish
-
-# ==============================
-# Stage 2 — Runtime Image
-# ==============================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
-WORKDIR /app
-
-# Copy published app from build stage
-COPY --from=build /app/publish .
+# Building final image used in running container
+FROM base AS final
+RUN apk update \
+    && apk add unzip procps
+WORKDIR /src
+COPY --from=publish /out .
 
 # Cloud Run uses port 8080
 ENV ASPNETCORE_URLS=http://+:8080
