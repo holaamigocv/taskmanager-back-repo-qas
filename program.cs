@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 using taskmanager_back_repo_qas.Data;
+using Microsoft.OpenApi
+using Swashbuckle.AspNetCore.Swagger
+using Swashbuckle.AspNetCore.SwaggerGen
+using Swashbuckle.AspNetCore.SwaggerUI
 
 var builder = WebApplication.CreateBuilder(args);
 
