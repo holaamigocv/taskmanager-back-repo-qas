@@ -1,77 +1,58 @@
-substitutions:
-  _REGION: us-east1
-  _PROJECT: cv-taskmanagertienda-qas
-  _SERVICE: taskmanager-back-qas
-  _REPO: taskmanager-back-repo-qas
-  _SQL_INSTANCE: taskmanager-sql-db
-  _VPC_CONNECTOR: serverless-connector-qas
-  _SA_EMAIL: sa-cloudrun-app@cv-taskmanagertienda-qas.iam.gserviceaccount.com
-  _DB_USER_SECRET: _DB_USER_SECRET_NAME
-  _DB_PASSWORD_SECRET: _DB_PASSWORD_SECRET_NAME
-  _DB_NAME: taskmanagerdb
-
 steps:
-# 1️⃣ Construcción de imagen Docker
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Build image'
-  args:
-    ['build', '-t', '${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_SERVICE}:$SHORT_SHA', '.']
+  # ==============================
+  # 1) Build Docker image
+  # ==============================
+  - name: gcr.io/cloud-builders/docker
+    args:
+      [
+        "build",
+        "-t",
+        "us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest",
+        "."
+      ]
 
-# 2️⃣ Push de imagen a Artifact Registry
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Push image'
-  args:
-    ['push', '${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_SERVICE}:$SHORT_SHA']
+  # ==============================
+  # 2) Push image to Artifact Registry
+  # ==============================
+  - name: gcr.io/cloud-builders/docker
+    args:
+      [
+        "push",
+        "us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest"
+      ]
 
-# 3️⃣ Verificación de conexión a Cloud SQL (sin usar variables de entorno)
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'Check DB Connection'
-  entrypoint: 'bash'
-  args:
-    - '-eux'
-    - |
-      echo "🔍 Verificando conexión a Cloud SQL ${_SQL_INSTANCE}..."
-      
-      # Obtener usuario y contraseña directamente de Secret Manager
-      DB_USER=$(gcloud secrets versions access latest --secret=${_DB_USER_SECRET})
-      DB_PASS=$(gcloud secrets versions access latest --secret=${_DB_PASSWORD_SECRET})
+  # ==============================
+  # 3) Deploy to Cloud Run (QAS)
+  # ==============================
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      [
+        "run", "deploy", "taskmanager-back-qas",
+        "--region=us-east1",
+        "--platform=managed",
+        "--image=us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest",
+        "--allow-unauthenticated",
+        "--cpu=1",
+        "--memory=1Gi",
+        "--port=8080",
+        "--set-env-vars", "DB_HOST=/cloudsql/$PROJECT_ID:us-east1:taskmanager-sql-db",
+        "--set-env-vars", "DB_USER=taskmanageruser",
+        "--set-env-vars", "DB_NAME=taskmanagerdb",
+        "--set-secrets", "DB_PASS=taskmanager-backend-password:latest",
+        "--add-cloudsql-instances=$PROJECT_ID:us-east1:taskmanager-sql-db",
+        "--vpc-connector=vpc-connector-taskmanager",
+        "--vpc-egress=all-traffic"
+      ]
 
-      # Descargar proxy y cliente psql
-      curl -fsSL -o cloud_sql_proxy https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
-      chmod +x cloud_sql_proxy
-      apt-get update -y && apt-get install -y postgresql-client
-
-      # Ejecutar proxy en background
-      ./cloud_sql_proxy -instances=${_PROJECT}:${_REGION}:${_SQL_INSTANCE}=tcp:5432 &
-      sleep 5
-
-      # Intentar conexión al PostgreSQL
-      export PGPASSWORD="$$DB_PASS"
-      psql -h 10.20.0.3 -p 5432 -U "$$DB_USER" -d "${_DB_NAME}" -c "SELECT '✅ Conexión exitosa a la base de datos' AS status;" || {
-        echo "❌ Falló la conexión a la base de datos"; exit 1;
-      }
-
-# 4️⃣ Despliegue del backend en Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'Deploy Cloud Run'
-  entrypoint: 'bash'
-  args:
-    - '-eux'
-    - |
-      echo "🚀 Desplegando servicio ${_SERVICE}..."
-      gcloud run deploy ${_SERVICE} \
-        --image=${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_SERVICE}:$SHORT_SHA \
-        --region=${_REGION} \
-        --platform=managed \
-        --service-account=${_SA_EMAIL} \
-        --cpu=1 \
-        --memory=1Gi \
-        --vpc-connector=${_VPC_CONNECTOR} \
-        --add-cloudsql-instances=${_PROJECT}:${_REGION}:${_SQL_INSTANCE} \
-        --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${_PROJECT}:${_REGION}:${_SQL_INSTANCE},DB_NAME=${_DB_NAME},DB_USER_SECRET=${_DB_USER_SECRET},DB_PASSWORD_SECRET=${_DB_PASSWORD_SECRET}" \
-        --allow-unauthenticated
-
-images:
-- '${_REGION}-docker.pkg.dev/${_PROJECT}/${_REPO}/${_SERVICE}:$SHORT_SHA'
+# ==============================
+# Store build logs in Cloud Storage
+# ==============================
 options:
   logging: CLOUD_LOGGING_ONLY
+
+# ==============================
+# Artifact Registry retention policy
+# ==============================
+images:
+  - "us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest"
