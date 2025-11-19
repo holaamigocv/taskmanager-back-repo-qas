@@ -4,11 +4,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore dotnet-cloud-run-taskmanager-back-repo-qas.csproj
-RUN dotnet build "./dotnet-cloud-run-taskmanager-back-repo-qas.csproj" -c Debug -o /out
+RUN dotnet restore taskmanager-back-repo-qas.csproj
+RUN dotnet build "./taskmanager-back-repo-qas.csproj" -c Debug -o /out
 
 FROM build AS publish
-RUN dotnet publish dotnet-cloud-run-taskmanager-back-repo-qas.csproj -c Debug -o /out
+RUN dotnet publish taskmanager-back-repo-qas.csproj -c Debug -o /out
 
 # Building final image used in running container
 FROM base AS final
