@@ -28,7 +28,7 @@ steps:
           --image="$$IMAGE" \
           --region=us-east1 \
           --platform=managed \
-          --service-account=sa-cloudrun-taskmanager@ccv-taskmanagertienda-qas.iam.gserviceaccount.com \
+          --service-account=sa-cloudrun-taskmanager@cv-taskmanagertienda-qas.iam.gserviceaccount.com \
           --cpu=1 \
           --memory=1Gi \
           --port=8080 \
