@@ -46,7 +46,7 @@ app.MapGet("/dbtest", async (AppDbContext db) =>
     try
     {
         // Raw SQL—works even with an empty DB
-        var result = await db.Database.ExecuteSqlRawAsync("SELECT 1");
+        var result = await db.Database.ExecuteSqlRawAsync("SELECT current_user, current_database();");
         return Results.Ok(new { status = "ok", message = "Connected to DB" });
     }
     catch (Exception ex)
