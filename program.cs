@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using taskmanager_back_repo_qas.Api.Data;
+using taskmanager_back_repo_qas.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
