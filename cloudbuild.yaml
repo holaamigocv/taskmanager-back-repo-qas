@@ -22,7 +22,7 @@ steps:
       - |
         set -euo pipefail
         IMAGE="us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:$SHORT_SHA"
-        echo "Deploying $IMAGE to Cloud Run service taskmanager-back-qas..."
+        echo "Deploying $$IMAGE to Cloud Run service taskmanager-back-qas..."
 
         gcloud run deploy taskmanager-back-qas \
           --image="$$IMAGE" \
