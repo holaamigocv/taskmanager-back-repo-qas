@@ -1,58 +1,51 @@
+# cloudbuild.yaml
+# Ejecuta en Cloud Build. Usa los secretos definidos en el proyecto: _DB_USER_SECRET_NAME, _DB_PASSWORD_SECRET_NAME
 steps:
-  # ==============================
-  # 1) Build Docker image
-  # ==============================
-  - name: gcr.io/cloud-builders/docker
+  # 1) Build image (docker build)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
     args:
-      [
-        "build",
-        "-t",
-        "us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest",
-        "."
-      ]
+      ['build', '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:$SHORT_SHA', '.']
 
-  # ==============================
-  # 2) Push image to Artifact Registry
-  # ==============================
-  - name: gcr.io/cloud-builders/docker
+  # 2) Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
     args:
-      [
-        "push",
-        "us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest"
-      ]
+      ['push', 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:$SHORT_SHA']
 
-  # ==============================
-  # 3) Deploy to Cloud Run (QAS)
-  # ==============================
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
+  # 3) Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
+    entrypoint: 'bash'
     args:
-      [
-        "run", "deploy", "taskmanager-back-qas",
-        "--region=us-east1",
-        "--platform=managed",
-        "--image=us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest",
-        "--allow-unauthenticated",
-        "--cpu=1",
-        "--memory=1Gi",
-        "--port=8080",
-        "--set-env-vars", "DB_HOST=/cloudsql/$PROJECT_ID:us-east1:taskmanager-sql-db",
-        "--set-env-vars", "DB_USER=taskmanageruser",
-        "--set-env-vars", "DB_NAME=taskmanagerdb",
-        "--set-secrets", "DB_PASS=taskmanager-backend-password:latest",
-        "--add-cloudsql-instances=$PROJECT_ID:us-east1:taskmanager-sql-db",
-        "--vpc-connector=vpc-connector-taskmanager",
-        "--vpc-egress=all-traffic"
-      ]
+      - '-c'
+      - |
+        set -euo pipefail
+        IMAGE="us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:$SHORT_SHA"
+        echo "Deploying $IMAGE to Cloud Run service taskmanager-back-qas..."
 
-# ==============================
-# Store build logs in Cloud Storage
-# ==============================
+        gcloud run deploy taskmanager-back-qas \
+          --image="$IMAGE" \
+          --region=us-east1 \
+          --platform=managed \
+          --service-account=sa-cloudrun-app@$PROJECT_ID.iam.gserviceaccount.com \
+          --cpu=1 \
+          --memory=1Gi \
+          --port=8080 \
+          --allow-unauthenticated \
+          --add-cloudsql-instances=$PROJECT_ID:us-east1:taskmanager-sql-db \
+          --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:us-east1:taskmanager-sql-db,DB_NAME=taskmanagerdb \
+          --set-secrets=DB_USER=$_DB_USER_SECRET_NAME:latest \
+          --set-secrets=DB_PASS=$_DB_PASSWORD_SECRET_NAME:latest \
+          --vpc-connector=vpc-connector-taskmanager \
+          --vpc-egress=all-traffic
+
+images:
+  - 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:$SHORT_SHA'
+
+substitutions:
+  _DB_USER_SECRET_NAME: "_DB_USER_SECRET_NAME"
+  _DB_PASSWORD_SECRET_NAME: "_DB_PASSWORD_SECRET_NAME"
+
 options:
   logging: CLOUD_LOGGING_ONLY
-
-# ==============================
-# Artifact Registry retention policy
-# ==============================
-images:
-  - "us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-repo/taskmanager-back-repo-qas:latest"

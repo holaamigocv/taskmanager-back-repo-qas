@@ -3,32 +3,34 @@
 # ==============================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY . .
-RUN dotnet restore taskmanager-back-repo-qas.csproj
-RUN dotnet build "./taskmanager-back-repo-qas.csproj" -c Debug -o /out
 
-FROM build AS publish
-RUN dotnet publish taskmanager-back-repo-qas.csproj -c Debug -o /out
+# Copy csproj and restore
+COPY *.csproj ./
+RUN dotnet restore
 
+# Copy everything and publish
 COPY . ./
 RUN dotnet publish -c Release -o /app/publish
 
+# ==============================
+# Stage 2 — Runtime Image
+# ==============================
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
+# Copy published app
 COPY --from=build /app/publish .
 
-# Cloud Run uses port 8080
+# Cloud Run listens on port 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
-# Environment variables that Cloud Run / Cloud SQL will send
+# Placeholder env vars (will be injected at runtime by Cloud Run)
 ENV DB_HOST=""
 ENV DB_USER=""
 ENV DB_PASS=""
-ENV DB_NAME=""
+ENV DB_NAME="taskmanagerdb"
+ENV CLOUD_SQL_CONNECTION_NAME=""
 
-# Expose application port
 EXPOSE 8080
 
-# IMPORTANT: Replace dll name below with your actual output dll
 ENTRYPOINT ["dotnet", "taskmanager-back-repo-qas.dll"]
