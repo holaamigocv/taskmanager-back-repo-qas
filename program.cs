@@ -41,4 +41,29 @@ app.UseSwaggerUI();
 
 app.MapControllers();
 
+app.MapGet("/dbtest", async (AppDbContext db) =>
+{
+    try
+    {
+        // Simple query — adjust for your table
+        var count = await db.Users.CountAsync();  
+        return Results.Ok(new
+        {
+            status = "ok",
+            message = "Database connection successful",
+            usersInTable = count
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(new
+        {
+            status = "error",
+            message = ex.Message
+        }.ToString());
+    }
+});
+
+
 app.Run();
+
