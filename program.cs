@@ -45,22 +45,13 @@ app.MapGet("/dbtest", async (AppDbContext db) =>
 {
     try
     {
-        // Simple query — adjust for your table
-        var count = await db.Users.CountAsync();  
-        return Results.Ok(new
-        {
-            status = "ok",
-            message = "Database connection successful",
-            usersInTable = count
-        });
+        // Raw SQL—works even with an empty DB
+        var result = await db.Database.ExecuteSqlRawAsync("SELECT 1");
+        return Results.Ok(new { status = "ok", message = "Connected to DB" });
     }
     catch (Exception ex)
     {
-        return Results.Problem(new
-        {
-            status = "error",
-            message = ex.Message
-        }.ToString());
+        return Results.Problem(ex.Message);
     }
 });
 
