@@ -37,7 +37,7 @@ steps:
           --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:us-east1:taskmanager-sql-db,DB_NAME=taskmanagerdb \
           --set-secrets=DB_USER=$_DB_USER_SECRET_NAME:latest \
           --set-secrets=DB_PASS=$_DB_PASSWORD_SECRET_NAME:latest \
-          --vpc-connector=vpc-connector-taskmanager \
+          --vpc-connector=serverless-connector-qas \
           --vpc-egress=all-traffic
 
 images:
