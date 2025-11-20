@@ -5,13 +5,13 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
     args:
-      ['build', '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-repo/taskmanager-back-repo-qas:$SHORT_SHA', '.']
+      ['build', '-t', 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-qas/taskmanager-back-repo-qas:$SHORT_SHA', '.']
 
   # 2) Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-image'
     args:
-      ['push', 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-repo/taskmanager-back-repo-qas:$SHORT_SHA']
+      ['push', 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-qas/taskmanager-back-repo-qas:$SHORT_SHA']
 
   # 3) Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -21,14 +21,14 @@ steps:
       - '-c'
       - |
         set -euo pipefail
-        IMAGE="us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-repo/taskmanager-back-repo-qas:$SHORT_SHA"
+        IMAGE="us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-qas/taskmanager-back-repo-qas:$SHORT_SHA"
         echo "Deploying $$IMAGE to Cloud Run service taskmanager-back-qas..."
 
         gcloud run deploy taskmanager-back-qas \
           --image="$$IMAGE" \
           --region=us-east1 \
           --platform=managed \
-          --service-account=sa-cloudrun-app@$PROJECT_ID.iam.gserviceaccount.com \
+          --service-account=sa-cloudrun-taskmanager@poccv-taskmanagertienda-qas.iam.gserviceaccount.com \
           --cpu=1 \
           --memory=1Gi \
           --port=8080 \
@@ -41,7 +41,7 @@ steps:
           --vpc-egress=all-traffic
 
 images:
-  - 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-repo/taskmanager-back-repo-qas:$SHORT_SHA'
+  - 'us-east1-docker.pkg.dev/$PROJECT_ID/taskmanager-back-qas/taskmanager-back-repo-qas:$SHORT_SHA'
 
 substitutions:
   _DB_USER_SECRET_NAME: "_DB_USER_SECRET_NAME"
